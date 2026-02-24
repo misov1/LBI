@@ -1,4 +1,4 @@
-﻿//@name LBI-0.35.1-pre36
+//@name LBI-0.35.1-pre36
 //@display-name LBI-0.35.1-pre36
 //@version 0.35.1-pre36
 //@api 3.0
@@ -2621,6 +2621,7 @@ class Utils {
   }
   static _REQUEST_TYPE_MAP = {
     model: REQUEST_TYPE.CHAT,
+    v3: REQUEST_TYPE.CHAT,
     emotion: REQUEST_TYPE.EMOTION,
     memory: REQUEST_TYPE.MEMORY,
     translate: REQUEST_TYPE.TRANSLATION,
@@ -9613,29 +9614,37 @@ class OpenAIProvider extends BaseProvider {
       body.response_format = "b64_json";
     }
     const url = `https://api.openai.com/v1/images/edits`;
-    const formData = new FormData();
-    body.image.forEach((img) => {
-      formData.append("image[]", img);
-    });
-    formData.append("prompt", body.prompt);
-    if (body.mask) {
-      formData.append("mask", body.mask);
+    // FormData는 structured clone 불가 → nativeFetch의 postMessage를 통과할 수 없음
+    // CSP connect-src 'none'으로 직접 fetch도 차단됨
+    // → Blob으로 multipart body를 수동 구성하여 nativeFetch 사용
+    const boundary = "----LBIFormBoundary" + Math.random().toString(36).substr(2, 16);
+    const parts = [];
+    for (const img of body.image) {
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="image[]"; filename="image.png"\r\nContent-Type: ${img.type || "image/png"}\r\n\r\n`);
+      parts.push(img);
+      parts.push("\r\n");
     }
-    if (body.model) formData.append("model", body.model);
-    if (body.n) formData.append("n", String(body.n));
-    if (body.quality) formData.append("quality", body.quality);
-    if (body.size) formData.append("size", body.size);
+    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="prompt"\r\n\r\n${body.prompt}\r\n`);
+    if (body.mask) {
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="mask"; filename="mask.png"\r\nContent-Type: ${body.mask.type || "image/png"}\r\n\r\n`);
+      parts.push(body.mask);
+      parts.push("\r\n");
+    }
+    if (body.model) parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${body.model}\r\n`);
+    if (body.n) parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="n"\r\n\r\n${String(body.n)}\r\n`);
+    if (body.quality) parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="quality"\r\n\r\n${body.quality}\r\n`);
+    if (body.size) parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="size"\r\n\r\n${body.size}\r\n`);
+    parts.push(`--${boundary}--\r\n`);
     const fetchArgs = {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
-        // "Content-Type": contentType,
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
       },
-      // body: bytesFormData,
-      body: formData,
+      body: new Blob(parts),
     };
     Logger.info("Calling OpenAI with model:", body.model);
-    const response = await fetch(url, fetchArgs);
+    const response = await risuAPI.nativeFetch(url, fetchArgs);
     if (response.status !== 200) {
       throw new Error(await new Response(response.body).text());
     }
@@ -9935,7 +9944,8 @@ class VertexAIProvider extends BaseProvider {
   }
   static async getAccessToken(clientEmail, privateKey) {
     const jwt = await this.generateJWT(clientEmail, privateKey);
-    const response = await fetch("https://oauth2.googleapis.com/token", {
+    // CSP connect-src 'none'으로 직접 fetch 차단됨 → nativeFetch 사용
+    const response = await risuAPI.nativeFetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
