@@ -1,607 +1,1083 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LBI → CPM 설정 마이그레이션 도구</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; padding: 24px; }
-  h1 { font-size: 1.6rem; margin-bottom: 8px; color: #58a6ff; }
-  .subtitle { color: #8b949e; margin-bottom: 24px; font-size: 0.9rem; }
-  .container { max-width: 960px; margin: 0 auto; }
-  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-  .card h2 { font-size: 1.1rem; margin-bottom: 12px; color: #f0f6fc; }
-  .card h3 { font-size: 0.95rem; margin: 12px 0 8px; color: #58a6ff; }
-  label { display: block; font-size: 0.85rem; color: #8b949e; margin-bottom: 6px; }
-  textarea { width: 100%; min-height: 160px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; padding: 12px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; resize: vertical; }
-  textarea:focus { outline: none; border-color: #58a6ff; }
-  .btn { display: inline-block; padding: 8px 20px; border: 1px solid #30363d; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; margin-right: 8px; margin-top: 8px; }
-  .btn-primary { background: #238636; border-color: #2ea043; color: #fff; }
-  .btn-primary:hover { background: #2ea043; }
-  .btn-secondary { background: #21262d; color: #c9d1d9; }
-  .btn-secondary:hover { background: #30363d; }
-  .btn-danger { background: #da3633; border-color: #f85149; color: #fff; }
-  .btn-danger:hover { background: #f85149; }
-  .output-area { min-height: 200px; }
-  .log { margin-top: 12px; padding: 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; font-family: monospace; font-size: 0.8rem; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
-  .log .info { color: #58a6ff; }
-  .log .success { color: #3fb950; }
-  .log .warn { color: #d29922; }
-  .log .error { color: #f85149; }
-  .log .skip { color: #8b949e; }
-  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
-  .stat-box { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 16px; min-width: 120px; text-align: center; }
-  .stat-box .num { font-size: 1.4rem; font-weight: 700; color: #58a6ff; }
-  .stat-box .lbl { font-size: 0.75rem; color: #8b949e; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
-  .file-input-wrapper { position: relative; display: inline-block; }
-  .file-input-wrapper input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-  .mapping-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.8rem; }
-  .mapping-table th, .mapping-table td { padding: 6px 10px; border: 1px solid #30363d; text-align: left; }
-  .mapping-table th { background: #21262d; color: #f0f6fc; font-weight: 600; }
-  .mapping-table td { color: #c9d1d9; }
-  .mapping-table td.arrow { text-align: center; color: #58a6ff; font-weight: bold; }
-  details { margin-top: 12px; }
-  details summary { cursor: pointer; color: #58a6ff; font-size: 0.85rem; font-weight: 600; }
-  details summary:hover { text-decoration: underline; }
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>🧁 LBI → Cupcake PM 설정 마이그레이션</h1>
-  <p class="subtitle">LBI 플러그인 설정을 Cupcake Provider Manager (CPM) 형식으로 변환합니다.<br>
-    Google(Gemini), Vertex AI, Anthropic, AWS Bedrock, DeepSeek, OpenAI, Custom Provider 설정이 포함됩니다.</p>
 
-  <!-- 입력 -->
-  <div class="card">
-    <h2>① LBI 설정 입력</h2>
-    <p style="color:#8b949e; font-size:0.82rem; margin-bottom:12px;">
-      LBI 플러그인에서 내보낸 JSON 파일을 불러오거나, 텍스트를 직접 붙여넣으세요.<br>
-      지원 형식: <code>{ "lbiSettings": { ... } }</code> 또는 <code>{ "common_googleAIProvider_apiKey": "...", ... }</code>
-    </p>
-    <div style="margin-bottom: 12px;">
-      <div class="file-input-wrapper">
-        <button class="btn btn-secondary">📂 JSON 파일 불러오기</button>
-        <input type="file" id="fileInput" accept=".json">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LBI → CPM 설정 마이그레이션 도구</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+      color: #58a6ff;
+    }
+
+    .subtitle {
+      color: #8b949e;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: #f0f6fc;
+    }
+
+    .card h3 {
+      font-size: 0.95rem;
+      margin: 12px 0 8px;
+      color: #58a6ff;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      padding: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.82rem;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 20px;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s;
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      background: #238636;
+      border-color: #2ea043;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #2ea043;
+    }
+
+    .btn-secondary {
+      background: #21262d;
+      color: #c9d1d9;
+    }
+
+    .btn-secondary:hover {
+      background: #30363d;
+    }
+
+    .btn-danger {
+      background: #da3633;
+      border-color: #f85149;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #f85149;
+    }
+
+    .output-area {
+      min-height: 200px;
+    }
+
+    .log {
+      margin-top: 12px;
+      padding: 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log .info {
+      color: #58a6ff;
+    }
+
+    .log .success {
+      color: #3fb950;
+    }
+
+    .log .warn {
+      color: #d29922;
+    }
+
+    .log .error {
+      color: #f85149;
+    }
+
+    .log .skip {
+      color: #8b949e;
+    }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .stat-box {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 16px;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .stat-box .num {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #58a6ff;
+    }
+
+    .stat-box .lbl {
+      font-size: 0.75rem;
+      color: #8b949e;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .mapping-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.8rem;
+    }
+
+    .mapping-table th,
+    .mapping-table td {
+      padding: 6px 10px;
+      border: 1px solid #30363d;
+      text-align: left;
+    }
+
+    .mapping-table th {
+      background: #21262d;
+      color: #f0f6fc;
+      font-weight: 600;
+    }
+
+    .mapping-table td {
+      color: #c9d1d9;
+    }
+
+    .mapping-table td.arrow {
+      text-align: center;
+      color: #58a6ff;
+      font-weight: bold;
+    }
+
+    details {
+      margin-top: 12px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: #58a6ff;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    details summary:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🧁 LBI → Cupcake PM 설정 마이그레이션</h1>
+    <p class="subtitle">LBI 플러그인 설정을 Cupcake Provider Manager (CPM) 형식으로 변환합니다.<br>
+      Google(Gemini), Vertex AI, Anthropic, AWS Bedrock, DeepSeek, OpenAI, Custom Provider 설정이 포함됩니다.</p>
+
+    <!-- 입력 -->
+    <div class="card">
+      <h2>① LBI 설정 입력</h2>
+      <p style="color:#8b949e; font-size:0.82rem; margin-bottom:12px;">
+        LBI 플러그인에서 내보낸 JSON 파일을 불러오거나, 텍스트를 직접 붙여넣으세요.<br>
+        지원 형식: <code>{ "lbiSettings": { ... } }</code> 또는 <code>{ "common_googleAIProvider_apiKey": "...", ... }</code>
+      </p>
+      <div style="margin-bottom: 12px;">
+        <div class="file-input-wrapper">
+          <button class="btn btn-secondary">📂 JSON 파일 불러오기</button>
+          <input type="file" id="fileInput" accept=".json">
+        </div>
+      </div>
+      <label for="inputJson">LBI 설정 JSON:</label>
+      <textarea id="inputJson"
+        placeholder='{ "lbiSettings": { "common_googleAIProvider_apiKey": "AIza...", ... } }'></textarea>
+    </div>
+
+    <!-- 변환 -->
+    <div class="card">
+      <h2>② 변환</h2>
+      <button class="btn btn-primary" onclick="doConvert()">🔄 변환 실행</button>
+      <button class="btn btn-secondary" onclick="clearAll()">🗑 초기화</button>
+      <div id="logArea" class="log" style="display:none;"></div>
+      <div id="statsArea" class="stats" style="display:none;"></div>
+    </div>
+
+    <!-- 출력 -->
+    <div class="card">
+      <h2>③ CPM 설정 출력</h2>
+      <p style="color:#8b949e; font-size:0.82rem; margin-bottom:12px;">
+        변환된 CPM 설정을 복사하거나 JSON 파일로 다운로드하세요.<br>
+        CPM 설정에서 <b>가져오기(Import)</b> 기능으로 불러올 수 있습니다.
+      </p>
+      <div style="background:#1a1e24; border:1px solid #d29922; border-radius:6px; padding:12px; margin-bottom:12px;">
+        <p style="color:#d29922; font-size:0.82rem; margin:0; line-height:1.5;">
+          ⚠️ <b>Import 후 주의사항:</b><br>
+          1. CPM에서 설정 불러오기(Import) 실행 후, <b>설정 패널을 닫고 다시 열어야</b> 모든 탭에 반영됩니다.<br>
+          2. 커스텀 모델의 경우, <b>페이지 새로고침(F5)</b> 후 정상 반영됩니다.<br>
+          <span style="color:#8b949e;">(CPM v1.14.7 기준 — 향후 버전에서 자동 리프레시가 추가될 수 있습니다)</span>
+        </p>
+      </div>
+      <label for="outputJson">CPM 설정 JSON:</label>
+      <textarea id="outputJson" class="output-area" readonly placeholder="변환 결과가 여기에 표시됩니다."></textarea>
+      <div>
+        <button class="btn btn-secondary" onclick="copyOutput()">📋 클립보드 복사</button>
+        <button class="btn btn-secondary" onclick="downloadOutput()">💾 JSON 다운로드</button>
       </div>
     </div>
-    <label for="inputJson">LBI 설정 JSON:</label>
-    <textarea id="inputJson" placeholder='{ "lbiSettings": { "common_googleAIProvider_apiKey": "AIza...", ... } }'></textarea>
-  </div>
 
-  <!-- 변환 -->
-  <div class="card">
-    <h2>② 변환</h2>
-    <button class="btn btn-primary" onclick="doConvert()">🔄 변환 실행</button>
-    <button class="btn btn-secondary" onclick="clearAll()">🗑 초기화</button>
-    <div id="logArea" class="log" style="display:none;"></div>
-    <div id="statsArea" class="stats" style="display:none;"></div>
-  </div>
-
-  <!-- 출력 -->
-  <div class="card">
-    <h2>③ CPM 설정 출력</h2>
-    <p style="color:#8b949e; font-size:0.82rem; margin-bottom:12px;">
-      변환된 CPM 설정을 복사하거나 JSON 파일로 다운로드하세요.<br>
-      CPM 설정에서 <b>가져오기(Import)</b> 기능으로 불러올 수 있습니다.
-    </p>
-    <div style="background:#1a1e24; border:1px solid #d29922; border-radius:6px; padding:12px; margin-bottom:12px;">
-      <p style="color:#d29922; font-size:0.82rem; margin:0; line-height:1.5;">
-        ⚠️ <b>Import 후 주의사항:</b><br>
-        1. CPM에서 설정 불러오기(Import) 실행 후, <b>설정 패널을 닫고 다시 열어야</b> 모든 탭에 반영됩니다.<br>
-        2. 커스텀 모델의 경우, <b>페이지 새로고침(F5)</b> 후 정상 반영됩니다.<br>
-        <span style="color:#8b949e;">(CPM v1.14.7 기준 — 향후 버전에서 자동 리프레시가 추가될 수 있습니다)</span>
-      </p>
+    <!-- 매핑 참조 -->
+    <div class="card">
+      <details>
+        <summary>📖 설정 키 매핑 참조 테이블</summary>
+        <h3>프로바이더 API 키/설정</h3>
+        <table class="mapping-table">
+          <thead>
+            <tr>
+              <th>LBI 키</th>
+              <th></th>
+              <th>CPM 키</th>
+              <th>설명</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>common_googleAIProvider_apiKey</td>
+              <td class="arrow">→</td>
+              <td>cpm_gemini_key</td>
+              <td>Google AI Studio API 키</td>
+            </tr>
+            <tr>
+              <td>chat_gemini_thinkingLevel</td>
+              <td class="arrow">→</td>
+              <td>cpm_gemini_thinking_level</td>
+              <td>Gemini 3 사고 수준</td>
+            </tr>
+            <tr>
+              <td>chat_sampling_thinkingTokens</td>
+              <td class="arrow">→</td>
+              <td>cpm_gemini_thinking_budget</td>
+              <td>Gemini 2.5 사고 예산</td>
+            </tr>
+            <tr>
+              <td>chat_gemini_preserveSystem</td>
+              <td class="arrow">→</td>
+              <td>(동일)</td>
+              <td>시스템 프롬프트 보존</td>
+            </tr>
+            <tr>
+              <td>chat_gemini_showThoughtsToken</td>
+              <td class="arrow">→</td>
+              <td>(동일)</td>
+              <td>생각 토큰 표시</td>
+            </tr>
+            <tr>
+              <td>chat_gemini_useThoughtSignature</td>
+              <td class="arrow">→</td>
+              <td>(동일)</td>
+              <td>생각 서명 사용</td>
+            </tr>
+            <tr>
+              <td>chat_gemini_usePlainFetch</td>
+              <td class="arrow">→</td>
+              <td>(동일)</td>
+              <td>직접 요청</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border:0;height:8px"></td>
+            </tr>
+            <tr>
+              <td>common_vertexAIProvider_credentials</td>
+              <td class="arrow">→</td>
+              <td>cpm_vertex_key_json</td>
+              <td>Vertex AI JSON 키</td>
+            </tr>
+            <tr>
+              <td>common_vertexAIProvider_projectId<br>+ privateKey + clientEmail</td>
+              <td class="arrow">→</td>
+              <td>cpm_vertex_key_json</td>
+              <td>개별 필드 → JSON 합성</td>
+            </tr>
+            <tr>
+              <td>common_vertexAIProvider_customLocation</td>
+              <td class="arrow">→</td>
+              <td>cpm_vertex_location</td>
+              <td>Vertex 리전</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border:0;height:8px"></td>
+            </tr>
+            <tr>
+              <td>common_anthropicProvider_apiKey</td>
+              <td class="arrow">→</td>
+              <td>cpm_anthropic_key</td>
+              <td>Anthropic API 키</td>
+            </tr>
+            <tr>
+              <td>chat_claude_caching</td>
+              <td class="arrow">→</td>
+              <td>(동일)</td>
+              <td>클로드 캐싱</td>
+            </tr>
+            <tr>
+              <td>chat_claude_effort</td>
+              <td class="arrow">→</td>
+              <td>cpm_anthropic_thinking_effort</td>
+              <td>클로드 노력 수준</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border:0;height:8px"></td>
+            </tr>
+            <tr>
+              <td>common_awsProvider_accessKey</td>
+              <td class="arrow">→</td>
+              <td>cpm_aws_key</td>
+              <td>AWS 액세스 키</td>
+            </tr>
+            <tr>
+              <td>common_awsProvider_secretAccessKey</td>
+              <td class="arrow">→</td>
+              <td>cpm_aws_secret</td>
+              <td>AWS 시크릿 키</td>
+            </tr>
+            <tr>
+              <td>common_awsProvider_region</td>
+              <td class="arrow">→</td>
+              <td>cpm_aws_region</td>
+              <td>AWS 리전</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border:0;height:8px"></td>
+            </tr>
+            <tr>
+              <td>common_deepseekProvider_apiKey</td>
+              <td class="arrow">→</td>
+              <td>cpm_deepseek_key</td>
+              <td>DeepSeek API 키</td>
+            </tr>
+            <tr>
+              <td>common_deepseekProvider_customUrl</td>
+              <td class="arrow">→</td>
+              <td>cpm_deepseek_url</td>
+              <td>DeepSeek 커스텀 URL</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border:0;height:8px"></td>
+            </tr>
+            <tr>
+              <td>common_openaiProvider_apiKey</td>
+              <td class="arrow">→</td>
+              <td>cpm_openai_key</td>
+              <td>OpenAI API 키</td>
+            </tr>
+            <tr>
+              <td>common_openaiProvider_reasoningEffort</td>
+              <td class="arrow">→</td>
+              <td>cpm_openai_reasoning</td>
+              <td>추론 강도</td>
+            </tr>
+            <tr>
+              <td>common_openaiProvider_verbosity</td>
+              <td class="arrow">→</td>
+              <td>cpm_openai_verbosity</td>
+              <td>응답 상세</td>
+            </tr>
+            <tr>
+              <td>common_openaiProvider_servicetier</td>
+              <td class="arrow">→</td>
+              <td>common_openai_servicetier</td>
+              <td>서비스 티어</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border:0;height:8px"></td>
+            </tr>
+            <tr>
+              <td>tools_githubCopilotToken</td>
+              <td class="arrow">→</td>
+              <td>(동일)</td>
+              <td>Copilot 토큰</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:16px;">커스텀 프로바이더 (LBI 슬롯 1~9 → CPM cpm_custom_models)</h3>
+        <table class="mapping-table">
+          <thead>
+            <tr>
+              <th>LBI 필드</th>
+              <th></th>
+              <th>CPM 필드</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>displayName</td>
+              <td class="arrow">→</td>
+              <td>name</td>
+              <td>표시 이름</td>
+            </tr>
+            <tr>
+              <td>url</td>
+              <td class="arrow">→</td>
+              <td>url</td>
+              <td>API URL</td>
+            </tr>
+            <tr>
+              <td>apiKey</td>
+              <td class="arrow">→</td>
+              <td>key</td>
+              <td>API 키</td>
+            </tr>
+            <tr>
+              <td>model</td>
+              <td class="arrow">→</td>
+              <td>model</td>
+              <td>모델 ID</td>
+            </tr>
+            <tr>
+              <td>format (claude)</td>
+              <td class="arrow">→</td>
+              <td>format (anthropic)</td>
+              <td>포맷 변환</td>
+            </tr>
+            <tr>
+              <td>tokenizer</td>
+              <td class="arrow">→</td>
+              <td>tok</td>
+              <td>토크나이저</td>
+            </tr>
+            <tr>
+              <td>hasFirstSystemPrompt</td>
+              <td class="arrow">→</td>
+              <td>sysfirst</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>requiresAlternateRole</td>
+              <td class="arrow">→</td>
+              <td>altrole</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>mustStartWithUserInput</td>
+              <td class="arrow">→</td>
+              <td>mustuser</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>useMaxOutputTokensInstead</td>
+              <td class="arrow">→</td>
+              <td>maxout</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>mergeSystemPrompt</td>
+              <td class="arrow">→</td>
+              <td>mergesys</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>useDecoupledStreaming</td>
+              <td class="arrow">→</td>
+              <td>decoupled</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>useThoughtSignature</td>
+              <td class="arrow">→</td>
+              <td>thought</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>reasoningEffort</td>
+              <td class="arrow">→</td>
+              <td>reasoning</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>verbosity</td>
+              <td class="arrow">→</td>
+              <td>verbosity</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>thinkingLevel</td>
+              <td class="arrow">→</td>
+              <td>thinking</td>
+              <td>off/MINIMAL/LOW/MEDIUM/HIGH</td>
+            </tr>
+            <tr>
+              <td>thinkingTokens</td>
+              <td class="arrow">→</td>
+              <td>(customParams)</td>
+              <td>수동 설정 필요</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:16px;">제외되는 LBI 전용 설정</h3>
+        <p style="color:#8b949e; font-size:0.82rem; margin-top:4px;">
+          CPM에 대응하는 설정이 없어 제외됩니다:
+          chat_claude_cachingBreakpoints, chat_claude_cachingMaxExtension, chat_claude_useExperimentalCachingExtension,
+          chat_claude_useSilentCachingExtension, chat_claude_useAdaptiveThinking,
+          chat_gemini_removeForeignLanguage, chat_gemini_separateCot, chat_gemini_useGroundingSearch,
+          chat_gemini_useStreaming, chat_gemini_useDecoupledStreaming,
+          chat_removeStartANewChat, chat_autoClickTranslateButton, chat_normalizeThoughts,
+          common_previewPrompt, common_useEditorForInputBox, common_disableLog, common_disableToast,
+          common_gemini_blockPaidModel, common_fallbackToVertexGemini,
+          compatibility_*, hypa_* (별도 슬롯), translation_* (별도 슬롯), other_* (별도 슬롯),
+          common_deepseekProvider_reasoning, common_deepseekProvider_provider,
+          common_openaiProvider_useExtendedCache, common_novelaiProvider_apiKey,
+          tools_enableMCP, tools_encodeToolCall, tools_enableJsonSchema,
+          usage_metrics_db, chat_sampling_* (CPM은 RisuAI 기본 설정 사용)
+        </p>
+      </details>
     </div>
-    <label for="outputJson">CPM 설정 JSON:</label>
-    <textarea id="outputJson" class="output-area" readonly placeholder="변환 결과가 여기에 표시됩니다."></textarea>
-    <div>
-      <button class="btn btn-secondary" onclick="copyOutput()">📋 클립보드 복사</button>
-      <button class="btn btn-secondary" onclick="downloadOutput()">💾 JSON 다운로드</button>
-    </div>
   </div>
 
-  <!-- 매핑 참조 -->
-  <div class="card">
-    <details>
-      <summary>📖 설정 키 매핑 참조 테이블</summary>
-      <h3>프로바이더 API 키/설정</h3>
-      <table class="mapping-table">
-        <thead><tr><th>LBI 키</th><th></th><th>CPM 키</th><th>설명</th></tr></thead>
-        <tbody>
-          <tr><td>common_googleAIProvider_apiKey</td><td class="arrow">→</td><td>cpm_gemini_key</td><td>Google AI Studio API 키</td></tr>
-          <tr><td>chat_gemini_thinkingLevel</td><td class="arrow">→</td><td>cpm_gemini_thinking_level</td><td>Gemini 3 사고 수준</td></tr>
-          <tr><td>chat_sampling_thinkingTokens</td><td class="arrow">→</td><td>cpm_gemini_thinking_budget</td><td>Gemini 2.5 사고 예산</td></tr>
-          <tr><td>chat_gemini_preserveSystem</td><td class="arrow">→</td><td>(동일)</td><td>시스템 프롬프트 보존</td></tr>
-          <tr><td>chat_gemini_showThoughtsToken</td><td class="arrow">→</td><td>(동일)</td><td>생각 토큰 표시</td></tr>
-          <tr><td>chat_gemini_useThoughtSignature</td><td class="arrow">→</td><td>(동일)</td><td>생각 서명 사용</td></tr>
-          <tr><td>chat_gemini_usePlainFetch</td><td class="arrow">→</td><td>(동일)</td><td>직접 요청</td></tr>
-          <tr><td colspan="4" style="border:0;height:8px"></td></tr>
-          <tr><td>common_vertexAIProvider_credentials</td><td class="arrow">→</td><td>cpm_vertex_key_json</td><td>Vertex AI JSON 키</td></tr>
-          <tr><td>common_vertexAIProvider_projectId<br>+ privateKey + clientEmail</td><td class="arrow">→</td><td>cpm_vertex_key_json</td><td>개별 필드 → JSON 합성</td></tr>
-          <tr><td>common_vertexAIProvider_customLocation</td><td class="arrow">→</td><td>cpm_vertex_location</td><td>Vertex 리전</td></tr>
-          <tr><td colspan="4" style="border:0;height:8px"></td></tr>
-          <tr><td>common_anthropicProvider_apiKey</td><td class="arrow">→</td><td>cpm_anthropic_key</td><td>Anthropic API 키</td></tr>
-          <tr><td>chat_claude_caching</td><td class="arrow">→</td><td>(동일)</td><td>클로드 캐싱</td></tr>
-          <tr><td>chat_claude_effort</td><td class="arrow">→</td><td>cpm_anthropic_thinking_effort</td><td>클로드 노력 수준</td></tr>
-          <tr><td colspan="4" style="border:0;height:8px"></td></tr>
-          <tr><td>common_awsProvider_accessKey</td><td class="arrow">→</td><td>cpm_aws_key</td><td>AWS 액세스 키</td></tr>
-          <tr><td>common_awsProvider_secretAccessKey</td><td class="arrow">→</td><td>cpm_aws_secret</td><td>AWS 시크릿 키</td></tr>
-          <tr><td>common_awsProvider_region</td><td class="arrow">→</td><td>cpm_aws_region</td><td>AWS 리전</td></tr>
-          <tr><td colspan="4" style="border:0;height:8px"></td></tr>
-          <tr><td>common_deepseekProvider_apiKey</td><td class="arrow">→</td><td>cpm_deepseek_key</td><td>DeepSeek API 키</td></tr>
-          <tr><td>common_deepseekProvider_customUrl</td><td class="arrow">→</td><td>cpm_deepseek_url</td><td>DeepSeek 커스텀 URL</td></tr>
-          <tr><td colspan="4" style="border:0;height:8px"></td></tr>
-          <tr><td>common_openaiProvider_apiKey</td><td class="arrow">→</td><td>cpm_openai_key</td><td>OpenAI API 키</td></tr>
-          <tr><td>common_openaiProvider_reasoningEffort</td><td class="arrow">→</td><td>cpm_openai_reasoning</td><td>추론 강도</td></tr>
-          <tr><td>common_openaiProvider_verbosity</td><td class="arrow">→</td><td>cpm_openai_verbosity</td><td>응답 상세</td></tr>
-          <tr><td>common_openaiProvider_servicetier</td><td class="arrow">→</td><td>common_openai_servicetier</td><td>서비스 티어</td></tr>
-          <tr><td colspan="4" style="border:0;height:8px"></td></tr>
-          <tr><td>tools_githubCopilotToken</td><td class="arrow">→</td><td>(동일)</td><td>Copilot 토큰</td></tr>
-        </tbody>
-      </table>
-      <h3 style="margin-top:16px;">커스텀 프로바이더 (LBI 슬롯 1~9 → CPM cpm_custom_models)</h3>
-      <table class="mapping-table">
-        <thead><tr><th>LBI 필드</th><th></th><th>CPM 필드</th><th>비고</th></tr></thead>
-        <tbody>
-          <tr><td>displayName</td><td class="arrow">→</td><td>name</td><td>표시 이름</td></tr>
-          <tr><td>url</td><td class="arrow">→</td><td>url</td><td>API URL</td></tr>
-          <tr><td>apiKey</td><td class="arrow">→</td><td>key</td><td>API 키</td></tr>
-          <tr><td>model</td><td class="arrow">→</td><td>model</td><td>모델 ID</td></tr>
-          <tr><td>format (claude)</td><td class="arrow">→</td><td>format (anthropic)</td><td>포맷 변환</td></tr>
-          <tr><td>tokenizer</td><td class="arrow">→</td><td>tok</td><td>토크나이저</td></tr>
-          <tr><td>hasFirstSystemPrompt</td><td class="arrow">→</td><td>sysfirst</td><td></td></tr>
-          <tr><td>requiresAlternateRole</td><td class="arrow">→</td><td>altrole</td><td></td></tr>
-          <tr><td>mustStartWithUserInput</td><td class="arrow">→</td><td>mustuser</td><td></td></tr>
-          <tr><td>useMaxOutputTokensInstead</td><td class="arrow">→</td><td>maxout</td><td></td></tr>
-          <tr><td>mergeSystemPrompt</td><td class="arrow">→</td><td>mergesys</td><td></td></tr>
-          <tr><td>useDecoupledStreaming</td><td class="arrow">→</td><td>decoupled</td><td></td></tr>
-          <tr><td>useThoughtSignature</td><td class="arrow">→</td><td>thought</td><td></td></tr>
-          <tr><td>reasoningEffort</td><td class="arrow">→</td><td>reasoning</td><td></td></tr>
-          <tr><td>verbosity</td><td class="arrow">→</td><td>verbosity</td><td></td></tr>
-          <tr><td>thinkingLevel</td><td class="arrow">→</td><td>thinking</td><td>off/MINIMAL/LOW/MEDIUM/HIGH</td></tr>
-          <tr><td>thinkingTokens</td><td class="arrow">→</td><td>(customParams)</td><td>수동 설정 필요</td></tr>
-        </tbody>
-      </table>
-      <h3 style="margin-top:16px;">제외되는 LBI 전용 설정</h3>
-      <p style="color:#8b949e; font-size:0.82rem; margin-top:4px;">
-        CPM에 대응하는 설정이 없어 제외됩니다:
-        chat_claude_cachingBreakpoints, chat_claude_cachingMaxExtension, chat_claude_useExperimentalCachingExtension,
-        chat_claude_useSilentCachingExtension, chat_claude_useAdaptiveThinking,
-        chat_gemini_removeForeignLanguage, chat_gemini_separateCot, chat_gemini_useGroundingSearch,
-        chat_gemini_useStreaming, chat_gemini_useDecoupledStreaming,
-        chat_removeStartANewChat, chat_autoClickTranslateButton, chat_normalizeThoughts,
-        common_previewPrompt, common_useEditorForInputBox, common_disableLog, common_disableToast,
-        common_gemini_blockPaidModel, common_fallbackToVertexGemini,
-        compatibility_*, hypa_* (별도 슬롯), translation_* (별도 슬롯), other_* (별도 슬롯),
-        common_deepseekProvider_reasoning, common_deepseekProvider_provider,
-        common_openaiProvider_useExtendedCache, common_novelaiProvider_apiKey,
-        tools_enableMCP, tools_encodeToolCall, tools_enableJsonSchema,
-        usage_metrics_db, chat_sampling_* (CPM은 RisuAI 기본 설정 사용)
-      </p>
-    </details>
-  </div>
-</div>
+  <script>
+    // ============================================================
+    // LBI → CPM Migration Logic
+    // ============================================================
 
-<script>
-// ============================================================
-// LBI → CPM Migration Logic
-// ============================================================
-
-/**
- * LBI 커스텀 프로바이더 슬롯의 키 접두사를 반환
- * slot 1: "common_customProvider_"
- * slot 2~9: "common_customProvider_{n}_"
- */
-function lbiCustomPrefix(n) {
-  return n === 1 ? 'common_customProvider_' : `common_customProvider_${n}_`;
-}
-
-/**
- * LBI format 값을 CPM format 값으로 변환
- * LBI: openai / claude / google
- * CPM: openai / anthropic / google
- */
-function convertFormat(lbiFormat) {
-  if (lbiFormat === 'claude') return 'anthropic';
-  return lbiFormat || 'openai';
-}
-
-/**
- * 문자열을 boolean으로 변환 (LBI는 문자열로 저장)
- */
-function toBool(val) {
-  if (val === true || val === 'true') return true;
-  return false;
-}
-
-/**
- * 값이 비어있지 않은지 확인
- */
-function hasValue(val) {
-  return val !== undefined && val !== null && val !== '';
-}
-
-/**
- * LBI Vertex AI의 개별 필드(projectId, privateKey, clientEmail)로부터
- * CPM이 사용하는 JSON credential 문자열을 합성
- */
-function buildVertexJsonFromLegacy(projectId, privateKey, clientEmail) {
-  if (!projectId && !privateKey && !clientEmail) return null;
-  const cred = {
-    type: 'service_account',
-    project_id: projectId || '',
-    private_key: privateKey || '',
-    client_email: clientEmail || '',
-  };
-  return JSON.stringify(cred, null, 2);
-}
-
-/**
- * LBI의 reasoning 관련 값을 CPM의 reasoning 값으로 변환
- * LBI reasoningEffort: '' / 'none' / 'minimal' / 'low' / 'medium' / 'high'
- * CPM reasoning (custom model): 'none' / 'off' / 'low' / 'medium' / 'high'
- */
-function convertReasoningEffort(val) {
-  if (!val || val === '' || val === 'none') return 'none';
-  if (val === 'minimal') return 'low'; // CPM에 minimal이 없으므로 low로 매핑
-  return val; // low, medium, high는 동일
-}
-
-/**
- * LBI thinkingLevel 값을 CPM thinking 값으로 변환
- * LBI: '' / 'MINIMAL' / 'LOW' / 'MEDIUM' / 'HIGH'
- * CPM: 'off' / 'none' / 'MINIMAL' / 'LOW' / 'MEDIUM' / 'HIGH'
- */
-function convertThinkingLevel(val) {
-  if (!val || val === '') return 'none';
-  return val; // MINIMAL, LOW, MEDIUM, HIGH 그대로
-}
-
-// ============================================================
-// Main Conversion
-// ============================================================
-
-function doConvert() {
-  const logEl = document.getElementById('logArea');
-  const statsEl = document.getElementById('statsArea');
-  const outputEl = document.getElementById('outputJson');
-  logEl.style.display = 'block';
-  statsEl.style.display = 'flex';
-  logEl.innerHTML = '';
-  statsEl.innerHTML = '';
-  outputEl.value = '';
-
-  const logs = [];
-  const log = (cls, msg) => logs.push(`<span class="${cls}">${msg}</span>`);
-
-  // 입력 파싱
-  let rawInput;
-  try {
-    rawInput = JSON.parse(document.getElementById('inputJson').value.trim());
-  } catch (e) {
-    log('error', `❌ JSON 파싱 실패: ${e.message}`);
-    logEl.innerHTML = logs.join('\n');
-    return;
-  }
-
-  // LBI 설정 추출 (래핑 형태 또는 플랫 형태 모두 지원)
-  let lbi;
-  if (rawInput.lbiSettings && typeof rawInput.lbiSettings === 'object') {
-    lbi = rawInput.lbiSettings;
-    log('info', 'ℹ️ "lbiSettings" 래퍼 감지 → 내부 데이터 사용');
-  } else {
-    lbi = rawInput;
-    log('info', 'ℹ️ 플랫 JSON 형식으로 처리');
-  }
-
-  const cpm = {};
-  let converted = 0;
-  let skipped = 0;
-  let customCount = 0;
-
-  // === Helper ===
-  function migrate(lbiKey, cpmKey, label) {
-    const val = lbi[lbiKey];
-    if (hasValue(val)) {
-      cpm[cpmKey] = String(val);
-      converted++;
-      log('success', `✅ ${label}: ${lbiKey} → ${cpmKey}`);
-    } else {
-      skipped++;
-      log('skip', `  ⏭ ${label}: ${lbiKey} (값 없음)`);
-    }
-  }
-
-  // ============================
-  // 1. Google AI (Gemini Studio)
-  // ============================
-  log('info', '\n── Google AI (Gemini Studio) ──');
-  migrate('common_googleAIProvider_apiKey', 'cpm_gemini_key', 'Gemini API 키');
-  migrate('chat_gemini_thinkingLevel', 'cpm_gemini_thinking_level', 'Gemini 사고 수준');
-  migrate('chat_sampling_thinkingTokens', 'cpm_gemini_thinking_budget', 'Gemini 사고 예산');
-  // 공유 키 (LBI와 CPM에서 동일한 키 사용)
-  migrate('chat_gemini_preserveSystem', 'chat_gemini_preserveSystem', '시스템 프롬프트 보존');
-  migrate('chat_gemini_showThoughtsToken', 'chat_gemini_showThoughtsToken', '생각 토큰 표시');
-  migrate('chat_gemini_useThoughtSignature', 'chat_gemini_useThoughtSignature', '생각 서명 사용');
-  migrate('chat_gemini_usePlainFetch', 'chat_gemini_usePlainFetch', '직접 요청');
-  // 동적 모델 활성화 (키가 있으면 켜기)
-  if (hasValue(lbi['common_googleAIProvider_apiKey'])) {
-    cpm['cpm_dynamic_googleai'] = 'true';
-    log('info', '  ℹ️ cpm_dynamic_googleai = true (API 키 존재)');
-  }
-
-  // ============================
-  // 2. Vertex AI
-  // ============================
-  log('info', '\n── Vertex AI ──');
-  // Vertex JSON 키 합성: credentials 필드 우선, 없으면 개별 필드에서 합성
-  const vertexCreds = lbi['common_vertexAIProvider_credentials'];
-  const vertexProjectId = lbi['common_vertexAIProvider_projectId'];
-  const vertexPrivateKey = lbi['common_vertexAIProvider_privateKey'];
-  const vertexClientEmail = lbi['common_vertexAIProvider_clientEmail'];
-
-  if (hasValue(vertexCreds)) {
-    // credentials 필드가 있으면 그대로 사용
-    let combinedCreds = vertexCreds;
-    // 개별 필드도 있으면 앞에 추가 (LBI의 동작과 동일)
-    if (hasValue(vertexProjectId) && hasValue(vertexPrivateKey) && hasValue(vertexClientEmail)) {
-      const legacyJson = buildVertexJsonFromLegacy(vertexProjectId, vertexPrivateKey, vertexClientEmail);
-      combinedCreds = legacyJson + ',\n' + vertexCreds;
-      log('success', '✅ Vertex: 개별 필드 + credentials → cpm_vertex_key_json (합성)');
-    } else {
-      log('success', '✅ Vertex: credentials → cpm_vertex_key_json');
-    }
-    cpm['cpm_vertex_key_json'] = combinedCreds;
-    converted++;
-  } else if (hasValue(vertexProjectId) && hasValue(vertexPrivateKey) && hasValue(vertexClientEmail)) {
-    const legacyJson = buildVertexJsonFromLegacy(vertexProjectId, vertexPrivateKey, vertexClientEmail);
-    cpm['cpm_vertex_key_json'] = legacyJson;
-    converted++;
-    log('success', '✅ Vertex: 개별 필드(projectId/privateKey/clientEmail) → cpm_vertex_key_json (합성)');
-  } else {
-    skipped++;
-    log('skip', '  ⏭ Vertex 키: 값 없음 (credentials와 개별 필드 모두 비어있음)');
-  }
-
-  migrate('common_vertexAIProvider_customLocation', 'cpm_vertex_location', 'Vertex 리전');
-  // Vertex에도 thinking 설정 복사 (Gemini 설정을 Vertex에도 적용)
-  if (hasValue(lbi['chat_gemini_thinkingLevel'])) {
-    cpm['cpm_vertex_thinking_level'] = String(lbi['chat_gemini_thinkingLevel']);
-    log('info', '  ℹ️ cpm_vertex_thinking_level = chat_gemini_thinkingLevel (공유)');
-  }
-  if (hasValue(lbi['chat_sampling_thinkingTokens'])) {
-    cpm['cpm_vertex_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
-    log('info', '  ℹ️ cpm_vertex_thinking_budget = chat_sampling_thinkingTokens (공유)');
-    // Vertex에서 Claude 모델 사용 시의 thinking budget도 동일 값으로 설정
-    cpm['cpm_vertex_claude_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
-    log('info', '  ℹ️ cpm_vertex_claude_thinking_budget = chat_sampling_thinkingTokens (공유)');
-  }
-  // Vertex 공유 키
-  if (hasValue(lbi['chat_gemini_showThoughtsToken'])) {
-    cpm['chat_vertex_showThoughtsToken'] = String(lbi['chat_gemini_showThoughtsToken']);
-    log('info', '  ℹ️ chat_vertex_showThoughtsToken = chat_gemini_showThoughtsToken');
-  }
-  if (hasValue(lbi['chat_gemini_useThoughtSignature'])) {
-    cpm['chat_vertex_useThoughtSignature'] = String(lbi['chat_gemini_useThoughtSignature']);
-    log('info', '  ℹ️ chat_vertex_useThoughtSignature = chat_gemini_useThoughtSignature');
-  }
-  if (hasValue(lbi['chat_gemini_preserveSystem'])) {
-    cpm['chat_vertex_preserveSystem'] = String(lbi['chat_gemini_preserveSystem']);
-    log('info', '  ℹ️ chat_vertex_preserveSystem = chat_gemini_preserveSystem');
-  }
-  // Vertex 동적 모델
-  if (hasValue(cpm['cpm_vertex_key_json'])) {
-    cpm['cpm_dynamic_vertexai'] = 'true';
-    log('info', '  ℹ️ cpm_dynamic_vertexai = true (키 존재)');
-  }
-
-  // ============================
-  // 3. Anthropic
-  // ============================
-  log('info', '\n── Anthropic ──');
-  migrate('common_anthropicProvider_apiKey', 'cpm_anthropic_key', 'Anthropic API 키');
-  migrate('chat_claude_caching', 'chat_claude_caching', '클로드 캐싱');
-  migrate('chat_claude_effort', 'cpm_anthropic_thinking_effort', '클로드 노력 수준');
-  // thinking budget: chat_sampling_thinkingTokens를 Anthropic에도 적용
-  if (hasValue(lbi['chat_sampling_thinkingTokens'])) {
-    cpm['cpm_anthropic_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
-    log('info', '  ℹ️ cpm_anthropic_thinking_budget = chat_sampling_thinkingTokens');
-  }
-  if (hasValue(lbi['common_anthropicProvider_apiKey'])) {
-    cpm['cpm_dynamic_anthropic'] = 'true';
-    log('info', '  ℹ️ cpm_dynamic_anthropic = true (API 키 존재)');
-  }
-
-  // ============================
-  // 4. AWS Bedrock
-  // ============================
-  log('info', '\n── AWS Bedrock ──');
-  migrate('common_awsProvider_accessKey', 'cpm_aws_key', 'AWS 액세스 키');
-  migrate('common_awsProvider_secretAccessKey', 'cpm_aws_secret', 'AWS 시크릿 키');
-  migrate('common_awsProvider_region', 'cpm_aws_region', 'AWS 리전');
-  // AWS thinking: chat_sampling_thinkingTokens
-  if (hasValue(lbi['chat_sampling_thinkingTokens'])) {
-    cpm['cpm_aws_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
-    log('info', '  ℹ️ cpm_aws_thinking_budget = chat_sampling_thinkingTokens');
-  }
-  if (hasValue(lbi['chat_claude_effort'])) {
-    cpm['cpm_aws_thinking_effort'] = String(lbi['chat_claude_effort']);
-    log('info', '  ℹ️ cpm_aws_thinking_effort = chat_claude_effort');
-  }
-  if (hasValue(lbi['common_awsProvider_accessKey'])) {
-    cpm['cpm_dynamic_aws'] = 'true';
-    log('info', '  ℹ️ cpm_dynamic_aws = true (키 존재)');
-  }
-
-  // ============================
-  // 5. DeepSeek
-  // ============================
-  log('info', '\n── DeepSeek ──');
-  migrate('common_deepseekProvider_apiKey', 'cpm_deepseek_key', 'DeepSeek API 키');
-  migrate('common_deepseekProvider_customUrl', 'cpm_deepseek_url', 'DeepSeek 커스텀 URL');
-  if (hasValue(lbi['common_deepseekProvider_apiKey'])) {
-    cpm['cpm_dynamic_deepseek'] = 'true';
-    log('info', '  ℹ️ cpm_dynamic_deepseek = true (API 키 존재)');
-  }
-
-  // ============================
-  // 6. OpenAI
-  // ============================
-  log('info', '\n── OpenAI ──');
-  migrate('common_openaiProvider_apiKey', 'cpm_openai_key', 'OpenAI API 키');
-  migrate('common_openaiProvider_reasoningEffort', 'cpm_openai_reasoning', 'OpenAI 추론 강도');
-  migrate('common_openaiProvider_verbosity', 'cpm_openai_verbosity', 'OpenAI 응답 상세');
-  migrate('common_openaiProvider_servicetier', 'common_openai_servicetier', 'OpenAI 서비스 티어');
-  if (hasValue(lbi['common_openaiProvider_apiKey'])) {
-    cpm['cpm_dynamic_openai'] = 'true';
-    log('info', '  ℹ️ cpm_dynamic_openai = true (API 키 존재)');
-  }
-
-  // ============================
-  // 7. Copilot
-  // ============================
-  log('info', '\n── GitHub Copilot ──');
-  migrate('tools_githubCopilotToken', 'tools_githubCopilotToken', 'Copilot 토큰');
-
-  // ============================
-  // 8. Custom Providers (LBI 슬롯 1~9 → CPM cpm_custom_models JSON)
-  // ============================
-  log('info', '\n── 커스텀 프로바이더 (슬롯 1~9) ──');
-  const customModels = [];
-
-  for (let n = 1; n <= 9; n++) {
-    const pfx = lbiCustomPrefix(n);
-    const url = lbi[pfx + 'url'];
-    const model = lbi[pfx + 'model'];
-    const apiKey = lbi[pfx + 'apiKey'];
-
-    // URL 또는 모델이 있어야 유효한 슬롯으로 간주
-    if (!hasValue(url) && !hasValue(model)) {
-      log('skip', `  ⏭ 커스텀 슬롯 ${n}: 비어있음 (url/model 없음)`);
-      continue;
+    /**
+     * LBI 커스텀 프로바이더 슬롯의 키 접두사를 반환 (신 형식)
+     * slot 1: "common_customProvider_"
+     * slot 2~9: "common_customProvider_{n}_"
+     */
+    function lbiCustomPrefix(n) {
+      return n === 1 ? 'common_customProvider_' : `common_customProvider_${n}_`;
     }
 
-    const lbiFormat = lbi[pfx + 'format'] || 'openai';
-    const displayName = lbi[pfx + 'displayName'] || '';
-
-    const entry = {
-      uniqueId: `custom${n}`,
-      name: displayName || `Custom ${n}`,
-      model: model || '',
-      url: url || '',
-      key: apiKey || '',
-      format: convertFormat(lbiFormat),
-      sysfirst: toBool(lbi[pfx + 'hasFirstSystemPrompt']),
-      altrole: toBool(lbi[pfx + 'requiresAlternateRole']),
-      mustuser: toBool(lbi[pfx + 'mustStartWithUserInput']),
-      maxout: toBool(lbi[pfx + 'useMaxOutputTokensInstead']),
-      mergesys: toBool(lbi[pfx + 'mergeSystemPrompt']),
-      decoupled: toBool(lbi[pfx + 'useDecoupledStreaming']),
-      thought: toBool(lbi[pfx + 'useThoughtSignature']),
-      reasoning: convertReasoningEffort(lbi[pfx + 'reasoningEffort']),
-      verbosity: lbi[pfx + 'verbosity'] || 'none',
-      thinking: convertThinkingLevel(lbi[pfx + 'thinkingLevel']),
-      tok: lbi[pfx + 'tokenizer'] || 'o200k_base',
-      customParams: '',
-      effort: 'none',
-    };
-
-    // LBI effort(claude_effort)가 있으면 커스텀 모델 effort에도 적용
-    // (커스텀 슬롯이 Anthropic 포맷인 경우)
-    if (entry.format === 'anthropic' && hasValue(lbi['chat_claude_effort'])) {
-      entry.effort = lbi['chat_claude_effort'];
+    /**
+     * LBI 커스텀 프로바이더 슬롯의 레거시 키 접두사를 반환
+     * 구버전 LBI는 "common_openaiCompatibleProvider" 접두사를 사용했으며,
+     * common_customProvider와 동일한 필드 구조를 가짐.
+     * slot 1: "common_openaiCompatibleProvider_"
+     * slot 2~9: "common_openaiCompatibleProvider_{n}_"
+     */
+    function lbiLegacyPrefix(n) {
+      return n === 1 ? 'common_openaiCompatibleProvider_' : `common_openaiCompatibleProvider_${n}_`;
     }
 
-    // thinkingTokens 값이 있으면 참고 메모
-    const thinkingTokens = lbi[pfx + 'thinkingTokens'];
-    if (hasValue(thinkingTokens) && thinkingTokens !== '0') {
-      log('warn', `  ⚠️ 커스텀 슬롯 ${n}: thinkingTokens=${thinkingTokens} → CPM 커스텀 모델에 직접 대응 없음. 프로바이더별 설정에서 조정 필요`);
+    /**
+     * LBI format 값을 CPM format 값으로 변환
+     * LBI: openai / claude / google
+     * CPM: openai / anthropic / google
+     */
+    function convertFormat(lbiFormat) {
+      if (lbiFormat === 'claude') return 'anthropic';
+      return lbiFormat || 'openai';
     }
 
-    customModels.push(entry);
-    customCount++;
-    log('success', `✅ 커스텀 슬롯 ${n}: "${entry.name}" (${entry.format}) → cpm_custom_models[${customModels.length - 1}]`);
-  }
+    /**
+     * 문자열을 boolean으로 변환 (LBI는 문자열로 저장)
+     */
+    function toBool(val) {
+      if (val === true || val === 'true') return true;
+      return false;
+    }
 
-  if (customModels.length > 0) {
-    cpm['cpm_custom_models'] = JSON.stringify(customModels);
-    converted++;
-    log('success', `✅ 커스텀 모델 ${customModels.length}개 → cpm_custom_models`);
-  }
+    /**
+     * 값이 비어있지 않은지 확인
+     */
+    function hasValue(val) {
+      return val !== undefined && val !== null && val !== '';
+    }
 
-  // ============================
-  // 결과 출력
-  // ============================
-  log('info', `\n══════════════════════════`);
-  log('success', `✅ 변환 완료: ${converted}개 설정 변환됨, ${skipped}개 건너뜀, 커스텀 모델 ${customCount}개`);
+    /**
+     * LBI Vertex AI의 개별 필드(projectId, privateKey, clientEmail)로부터
+     * CPM이 사용하는 JSON credential 문자열을 합성
+     */
+    function buildVertexJsonFromLegacy(projectId, privateKey, clientEmail) {
+      if (!projectId && !privateKey && !clientEmail) return null;
+      const cred = {
+        type: 'service_account',
+        project_id: projectId || '',
+        private_key: privateKey || '',
+        client_email: clientEmail || '',
+      };
+      return JSON.stringify(cred, null, 2);
+    }
 
-  logEl.innerHTML = logs.join('\n');
-  outputEl.value = JSON.stringify(cpm, null, 2);
+    /**
+     * LBI의 reasoning 관련 값을 CPM의 reasoning 값으로 변환
+     * LBI reasoningEffort: '' / 'none' / 'minimal' / 'low' / 'medium' / 'high'
+     * CPM reasoning (custom model): 'none' / 'off' / 'low' / 'medium' / 'high'
+     */
+    function convertReasoningEffort(val) {
+      if (!val || val === '' || val === 'none') return 'none';
+      if (val === 'minimal') return 'low'; // CPM에 minimal이 없으므로 low로 매핑
+      return val; // low, medium, high는 동일
+    }
 
-  // 통계
-  statsEl.innerHTML = `
+    /**
+     * LBI thinkingLevel 값을 CPM thinking 값으로 변환
+     * LBI: '' / 'MINIMAL' / 'LOW' / 'MEDIUM' / 'HIGH'
+     * CPM: 'off' / 'none' / 'MINIMAL' / 'LOW' / 'MEDIUM' / 'HIGH'
+     */
+    function convertThinkingLevel(val) {
+      if (!val || val === '') return 'none';
+      return val; // MINIMAL, LOW, MEDIUM, HIGH 그대로
+    }
+
+    // ============================================================
+    // Main Conversion
+    // ============================================================
+
+    function doConvert() {
+      const logEl = document.getElementById('logArea');
+      const statsEl = document.getElementById('statsArea');
+      const outputEl = document.getElementById('outputJson');
+      logEl.style.display = 'block';
+      statsEl.style.display = 'flex';
+      logEl.innerHTML = '';
+      statsEl.innerHTML = '';
+      outputEl.value = '';
+
+      const logs = [];
+      const log = (cls, msg) => logs.push(`<span class="${cls}">${msg}</span>`);
+
+      // 입력 파싱
+      let rawInput;
+      try {
+        rawInput = JSON.parse(document.getElementById('inputJson').value.trim());
+      } catch (e) {
+        log('error', `❌ JSON 파싱 실패: ${e.message}`);
+        logEl.innerHTML = logs.join('\n');
+        return;
+      }
+
+      // LBI 설정 추출 (래핑 형태 또는 플랫 형태 모두 지원)
+      let lbi;
+      if (rawInput.lbiSettings && typeof rawInput.lbiSettings === 'object') {
+        lbi = rawInput.lbiSettings;
+        log('info', 'ℹ️ "lbiSettings" 래퍼 감지 → 내부 데이터 사용');
+      } else {
+        lbi = rawInput;
+        log('info', 'ℹ️ 플랫 JSON 형식으로 처리');
+      }
+
+      const cpm = {};
+      let converted = 0;
+      let skipped = 0;
+      let customCount = 0;
+
+      // === Helper ===
+      function migrate(lbiKey, cpmKey, label) {
+        const val = lbi[lbiKey];
+        if (hasValue(val)) {
+          cpm[cpmKey] = String(val);
+          converted++;
+          log('success', `✅ ${label}: ${lbiKey} → ${cpmKey}`);
+        } else {
+          skipped++;
+          log('skip', `  ⏭ ${label}: ${lbiKey} (값 없음)`);
+        }
+      }
+
+      // ============================
+      // 1. Google AI (Gemini Studio)
+      // ============================
+      log('info', '\n── Google AI (Gemini Studio) ──');
+      migrate('common_googleAIProvider_apiKey', 'cpm_gemini_key', 'Gemini API 키');
+      migrate('chat_gemini_thinkingLevel', 'cpm_gemini_thinking_level', 'Gemini 사고 수준');
+      migrate('chat_sampling_thinkingTokens', 'cpm_gemini_thinking_budget', 'Gemini 사고 예산');
+      // 공유 키 (LBI와 CPM에서 동일한 키 사용)
+      migrate('chat_gemini_preserveSystem', 'chat_gemini_preserveSystem', '시스템 프롬프트 보존');
+      migrate('chat_gemini_showThoughtsToken', 'chat_gemini_showThoughtsToken', '생각 토큰 표시');
+      migrate('chat_gemini_useThoughtSignature', 'chat_gemini_useThoughtSignature', '생각 서명 사용');
+      migrate('chat_gemini_usePlainFetch', 'chat_gemini_usePlainFetch', '직접 요청');
+      // 동적 모델 활성화 (키가 있으면 켜기)
+      if (hasValue(lbi['common_googleAIProvider_apiKey'])) {
+        cpm['cpm_dynamic_googleai'] = 'true';
+        log('info', '  ℹ️ cpm_dynamic_googleai = true (API 키 존재)');
+      }
+
+      // ============================
+      // 2. Vertex AI
+      // ============================
+      log('info', '\n── Vertex AI ──');
+      // Vertex JSON 키 합성: credentials 필드 우선, 없으면 개별 필드에서 합성
+      const vertexCreds = lbi['common_vertexAIProvider_credentials'];
+      const vertexProjectId = lbi['common_vertexAIProvider_projectId'];
+      const vertexPrivateKey = lbi['common_vertexAIProvider_privateKey'];
+      const vertexClientEmail = lbi['common_vertexAIProvider_clientEmail'];
+
+      if (hasValue(vertexCreds)) {
+        // credentials 필드가 있으면 그대로 사용
+        let combinedCreds = vertexCreds;
+        // 개별 필드도 있으면 앞에 추가 (LBI의 동작과 동일)
+        if (hasValue(vertexProjectId) && hasValue(vertexPrivateKey) && hasValue(vertexClientEmail)) {
+          const legacyJson = buildVertexJsonFromLegacy(vertexProjectId, vertexPrivateKey, vertexClientEmail);
+          combinedCreds = legacyJson + ',\n' + vertexCreds;
+          log('success', '✅ Vertex: 개별 필드 + credentials → cpm_vertex_key_json (합성)');
+        } else {
+          log('success', '✅ Vertex: credentials → cpm_vertex_key_json');
+        }
+        cpm['cpm_vertex_key_json'] = combinedCreds;
+        converted++;
+      } else if (hasValue(vertexProjectId) && hasValue(vertexPrivateKey) && hasValue(vertexClientEmail)) {
+        const legacyJson = buildVertexJsonFromLegacy(vertexProjectId, vertexPrivateKey, vertexClientEmail);
+        cpm['cpm_vertex_key_json'] = legacyJson;
+        converted++;
+        log('success', '✅ Vertex: 개별 필드(projectId/privateKey/clientEmail) → cpm_vertex_key_json (합성)');
+      } else {
+        skipped++;
+        log('skip', '  ⏭ Vertex 키: 값 없음 (credentials와 개별 필드 모두 비어있음)');
+      }
+
+      migrate('common_vertexAIProvider_customLocation', 'cpm_vertex_location', 'Vertex 리전');
+      // Vertex에도 thinking 설정 복사 (Gemini 설정을 Vertex에도 적용)
+      if (hasValue(lbi['chat_gemini_thinkingLevel'])) {
+        cpm['cpm_vertex_thinking_level'] = String(lbi['chat_gemini_thinkingLevel']);
+        log('info', '  ℹ️ cpm_vertex_thinking_level = chat_gemini_thinkingLevel (공유)');
+      }
+      if (hasValue(lbi['chat_sampling_thinkingTokens'])) {
+        cpm['cpm_vertex_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
+        log('info', '  ℹ️ cpm_vertex_thinking_budget = chat_sampling_thinkingTokens (공유)');
+        // Vertex에서 Claude 모델 사용 시의 thinking budget도 동일 값으로 설정
+        cpm['cpm_vertex_claude_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
+        log('info', '  ℹ️ cpm_vertex_claude_thinking_budget = chat_sampling_thinkingTokens (공유)');
+      }
+      // Vertex 공유 키
+      if (hasValue(lbi['chat_gemini_showThoughtsToken'])) {
+        cpm['chat_vertex_showThoughtsToken'] = String(lbi['chat_gemini_showThoughtsToken']);
+        log('info', '  ℹ️ chat_vertex_showThoughtsToken = chat_gemini_showThoughtsToken');
+      }
+      if (hasValue(lbi['chat_gemini_useThoughtSignature'])) {
+        cpm['chat_vertex_useThoughtSignature'] = String(lbi['chat_gemini_useThoughtSignature']);
+        log('info', '  ℹ️ chat_vertex_useThoughtSignature = chat_gemini_useThoughtSignature');
+      }
+      if (hasValue(lbi['chat_gemini_preserveSystem'])) {
+        cpm['chat_vertex_preserveSystem'] = String(lbi['chat_gemini_preserveSystem']);
+        log('info', '  ℹ️ chat_vertex_preserveSystem = chat_gemini_preserveSystem');
+      }
+      // Vertex 동적 모델
+      if (hasValue(cpm['cpm_vertex_key_json'])) {
+        cpm['cpm_dynamic_vertexai'] = 'true';
+        log('info', '  ℹ️ cpm_dynamic_vertexai = true (키 존재)');
+      }
+
+      // ============================
+      // 3. Anthropic
+      // ============================
+      log('info', '\n── Anthropic ──');
+      migrate('common_anthropicProvider_apiKey', 'cpm_anthropic_key', 'Anthropic API 키');
+      migrate('chat_claude_caching', 'chat_claude_caching', '클로드 캐싱');
+      migrate('chat_claude_effort', 'cpm_anthropic_thinking_effort', '클로드 노력 수준');
+      // thinking budget: chat_sampling_thinkingTokens를 Anthropic에도 적용
+      if (hasValue(lbi['chat_sampling_thinkingTokens'])) {
+        cpm['cpm_anthropic_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
+        log('info', '  ℹ️ cpm_anthropic_thinking_budget = chat_sampling_thinkingTokens');
+      }
+      if (hasValue(lbi['common_anthropicProvider_apiKey'])) {
+        cpm['cpm_dynamic_anthropic'] = 'true';
+        log('info', '  ℹ️ cpm_dynamic_anthropic = true (API 키 존재)');
+      }
+
+      // ============================
+      // 4. AWS Bedrock
+      // ============================
+      log('info', '\n── AWS Bedrock ──');
+      migrate('common_awsProvider_accessKey', 'cpm_aws_key', 'AWS 액세스 키');
+      migrate('common_awsProvider_secretAccessKey', 'cpm_aws_secret', 'AWS 시크릿 키');
+      migrate('common_awsProvider_region', 'cpm_aws_region', 'AWS 리전');
+      // AWS thinking: chat_sampling_thinkingTokens
+      if (hasValue(lbi['chat_sampling_thinkingTokens'])) {
+        cpm['cpm_aws_thinking_budget'] = String(lbi['chat_sampling_thinkingTokens']);
+        log('info', '  ℹ️ cpm_aws_thinking_budget = chat_sampling_thinkingTokens');
+      }
+      if (hasValue(lbi['chat_claude_effort'])) {
+        cpm['cpm_aws_thinking_effort'] = String(lbi['chat_claude_effort']);
+        log('info', '  ℹ️ cpm_aws_thinking_effort = chat_claude_effort');
+      }
+      if (hasValue(lbi['common_awsProvider_accessKey'])) {
+        cpm['cpm_dynamic_aws'] = 'true';
+        log('info', '  ℹ️ cpm_dynamic_aws = true (키 존재)');
+      }
+
+      // ============================
+      // 5. DeepSeek
+      // ============================
+      log('info', '\n── DeepSeek ──');
+      migrate('common_deepseekProvider_apiKey', 'cpm_deepseek_key', 'DeepSeek API 키');
+      migrate('common_deepseekProvider_customUrl', 'cpm_deepseek_url', 'DeepSeek 커스텀 URL');
+      if (hasValue(lbi['common_deepseekProvider_apiKey'])) {
+        cpm['cpm_dynamic_deepseek'] = 'true';
+        log('info', '  ℹ️ cpm_dynamic_deepseek = true (API 키 존재)');
+      }
+
+      // ============================
+      // 6. OpenAI
+      // ============================
+      log('info', '\n── OpenAI ──');
+      migrate('common_openaiProvider_apiKey', 'cpm_openai_key', 'OpenAI API 키');
+      migrate('common_openaiProvider_reasoningEffort', 'cpm_openai_reasoning', 'OpenAI 추론 강도');
+      migrate('common_openaiProvider_verbosity', 'cpm_openai_verbosity', 'OpenAI 응답 상세');
+      migrate('common_openaiProvider_servicetier', 'common_openai_servicetier', 'OpenAI 서비스 티어');
+      if (hasValue(lbi['common_openaiProvider_apiKey'])) {
+        cpm['cpm_dynamic_openai'] = 'true';
+        log('info', '  ℹ️ cpm_dynamic_openai = true (API 키 존재)');
+      }
+
+      // ============================
+      // 7. Copilot
+      // ============================
+      log('info', '\n── GitHub Copilot ──');
+      migrate('tools_githubCopilotToken', 'tools_githubCopilotToken', 'Copilot 토큰');
+
+      // ============================
+      // 8. Custom Providers (LBI 슬롯 1~9 → CPM cpm_custom_models JSON)
+      // ============================
+      log('info', '\n── 커스텀 프로바이더 (슬롯 1~9) ──');
+
+      // 레거시(common_openaiCompatibleProvider) 형식 존재 여부 사전 감지
+      const hasLegacyKeys = Object.keys(lbi).some(k => k.startsWith('common_openaiCompatibleProvider'));
+      const hasNewKeys = Object.keys(lbi).some(k => k.startsWith('common_customProvider'));
+      if (hasLegacyKeys && !hasNewKeys) {
+        log('warn', '  ⚠️ 구버전 LBI 형식(common_openaiCompatibleProvider) 감지 → 자동 변환합니다');
+      } else if (hasLegacyKeys && hasNewKeys) {
+        log('info', '  ℹ️ 신규 + 구버전(common_openaiCompatibleProvider) 형식 혼합 감지 → 신규 우선, 빈 슬롯은 레거시 폴백');
+      }
+
+      const customModels = [];
+
+      for (let n = 1; n <= 9; n++) {
+        let pfx = lbiCustomPrefix(n);
+        let isLegacy = false;
+
+        // 새 형식(common_customProvider)에 데이터가 없으면 레거시(common_openaiCompatibleProvider) 폴백
+        if (!hasValue(lbi[pfx + 'url']) && !hasValue(lbi[pfx + 'model'])) {
+          const legacyPfx = lbiLegacyPrefix(n);
+          if (hasValue(lbi[legacyPfx + 'url']) || hasValue(lbi[legacyPfx + 'model'])) {
+            pfx = legacyPfx;
+            isLegacy = true;
+          }
+        }
+
+        const url = lbi[pfx + 'url'];
+        const model = lbi[pfx + 'model'];
+        const apiKey = lbi[pfx + 'apiKey'];
+
+        // URL 또는 모델이 있어야 유효한 슬롯으로 간주
+        if (!hasValue(url) && !hasValue(model)) {
+          log('skip', `  ⏭ 커스텀 슬롯 ${n}: 비어있음 (url/model 없음)`);
+          continue;
+        }
+
+        const lbiFormat = lbi[pfx + 'format'] || 'openai';
+        const displayName = lbi[pfx + 'displayName'] || '';
+
+        const entry = {
+          uniqueId: `custom${n}`,
+          name: displayName || `Custom ${n}`,
+          model: model || '',
+          url: url || '',
+          key: apiKey || '',
+          format: convertFormat(lbiFormat),
+          sysfirst: toBool(lbi[pfx + 'hasFirstSystemPrompt']),
+          altrole: toBool(lbi[pfx + 'requiresAlternateRole']),
+          mustuser: toBool(lbi[pfx + 'mustStartWithUserInput']),
+          maxout: toBool(lbi[pfx + 'useMaxOutputTokensInstead']),
+          mergesys: toBool(lbi[pfx + 'mergeSystemPrompt']),
+          decoupled: toBool(lbi[pfx + 'useDecoupledStreaming']),
+          thought: toBool(lbi[pfx + 'useThoughtSignature']),
+          reasoning: convertReasoningEffort(lbi[pfx + 'reasoningEffort']),
+          verbosity: lbi[pfx + 'verbosity'] || 'none',
+          thinking: convertThinkingLevel(lbi[pfx + 'thinkingLevel']),
+          tok: lbi[pfx + 'tokenizer'] || 'o200k_base',
+          customParams: '',
+          effort: 'none',
+        };
+
+        // LBI effort(claude_effort)가 있으면 커스텀 모델 effort에도 적용
+        // (커스텀 슬롯이 Anthropic 포맷인 경우)
+        if (entry.format === 'anthropic' && hasValue(lbi['chat_claude_effort'])) {
+          entry.effort = lbi['chat_claude_effort'];
+        }
+
+        // thinkingTokens 값이 있으면 참고 메모
+        const thinkingTokens = lbi[pfx + 'thinkingTokens'];
+        if (hasValue(thinkingTokens) && thinkingTokens !== '0') {
+          log('warn', `  ⚠️ 커스텀 슬롯 ${n}: thinkingTokens=${thinkingTokens} → CPM 커스텀 모델에 직접 대응 없음. 프로바이더별 설정에서 조정 필요`);
+        }
+
+        customModels.push(entry);
+        customCount++;
+        const legacyTag = isLegacy ? ' [레거시: openaiCompatibleProvider]' : '';
+        log('success', `✅ 커스텀 슬롯 ${n}: "${entry.name}" (${entry.format})${legacyTag} → cpm_custom_models[${customModels.length - 1}]`);
+      }
+
+      if (customModels.length > 0) {
+        cpm['cpm_custom_models'] = JSON.stringify(customModels);
+        converted++;
+        log('success', `✅ 커스텀 모델 ${customModels.length}개 → cpm_custom_models`);
+      }
+
+      // ============================
+      // 결과 출력
+      // ============================
+      log('info', `\n══════════════════════════`);
+      log('success', `✅ 변환 완료: ${converted}개 설정 변환됨, ${skipped}개 건너뜀, 커스텀 모델 ${customCount}개`);
+
+      logEl.innerHTML = logs.join('\n');
+      outputEl.value = JSON.stringify(cpm, null, 2);
+
+      // 통계
+      statsEl.innerHTML = `
     <div class="stat-box"><div class="num">${converted}</div><div class="lbl">변환됨</div></div>
     <div class="stat-box"><div class="num">${skipped}</div><div class="lbl">건너뜀</div></div>
     <div class="stat-box"><div class="num">${customCount}</div><div class="lbl">커스텀 모델</div></div>
     <div class="stat-box"><div class="num">${Object.keys(cpm).length}</div><div class="lbl">전체 키 수</div></div>
   `;
 
-  // 스크롤
-  logEl.scrollTop = logEl.scrollHeight;
-}
+      // 스크롤
+      logEl.scrollTop = logEl.scrollHeight;
+    }
 
-// ============================================================
-// UI 유틸리티
-// ============================================================
+    // ============================================================
+    // UI 유틸리티
+    // ============================================================
 
-document.getElementById('fileInput').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    document.getElementById('inputJson').value = ev.target.result;
-  };
-  reader.readAsText(file, 'UTF-8');
-});
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById('inputJson').value = ev.target.result;
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
 
-function copyOutput() {
-  const output = document.getElementById('outputJson');
-  if (!output.value) { alert('변환 결과가 없습니다.'); return; }
-  navigator.clipboard.writeText(output.value).then(() => {
-    alert('클립보드에 복사되었습니다.');
-  }).catch(() => {
-    output.select();
-    document.execCommand('copy');
-    alert('클립보드에 복사되었습니다.');
-  });
-}
+    function copyOutput() {
+      const output = document.getElementById('outputJson');
+      if (!output.value) { alert('변환 결과가 없습니다.'); return; }
+      navigator.clipboard.writeText(output.value).then(() => {
+        alert('클립보드에 복사되었습니다.');
+      }).catch(() => {
+        output.select();
+        document.execCommand('copy');
+        alert('클립보드에 복사되었습니다.');
+      });
+    }
 
-function downloadOutput() {
-  const output = document.getElementById('outputJson').value;
-  if (!output) { alert('변환 결과가 없습니다.'); return; }
-  const blob = new Blob([output], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  a.download = `cupcake_pm_settings_migrated_${ts}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+    function downloadOutput() {
+      const output = document.getElementById('outputJson').value;
+      if (!output) { alert('변환 결과가 없습니다.'); return; }
+      const blob = new Blob([output], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = `cupcake_pm_settings_migrated_${ts}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
 
-function clearAll() {
-  document.getElementById('inputJson').value = '';
-  document.getElementById('outputJson').value = '';
-  document.getElementById('logArea').style.display = 'none';
-  document.getElementById('statsArea').style.display = 'none';
-  document.getElementById('logArea').innerHTML = '';
-  document.getElementById('statsArea').innerHTML = '';
-}
-</script>
+    function clearAll() {
+      document.getElementById('inputJson').value = '';
+      document.getElementById('outputJson').value = '';
+      document.getElementById('logArea').style.display = 'none';
+      document.getElementById('statsArea').style.display = 'none';
+      document.getElementById('logArea').innerHTML = '';
+      document.getElementById('statsArea').innerHTML = '';
+    }
+  </script>
 </body>
+
 </html>
